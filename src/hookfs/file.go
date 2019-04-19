@@ -204,7 +204,3 @@ func (h *hookFile) Allocate(off uint64, size uint64, mode uint32) fuse.Status {
 	return h.file.Allocate(off, size, mode)
 }
 
-// implements nodefs.Flock
-func (h *hookFile) Flock(flags int) fuse.Status {
-	return h.file.Flock(flags)
-}

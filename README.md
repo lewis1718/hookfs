@@ -2,6 +2,44 @@
 
 [![GoDoc](https://godoc.org/github.com/osrg/hookfs?status.svg)](https://godoc.org/github.com/osrg/hookfs)
 
+## 丰富入参
+
+    Usage of ./faultfs:
+    ./faultfs [OPTIONS] MOUNTPOINT ORIGINAL...
+    Options
+      -delay duration
+            delay time (ms, s, min, h ...) ,if use type (ReadFileDelay , WriteFileDelay, FsycnDelay), must set this option
+      -log-level int
+            log level (0..2)
+      -mountpoint string
+            (required) mount point , must set this option (default "/mnt/faultfs")
+      -original string
+            (required) original dir, must set this option (default "/mnt/fs")
+      -percent int
+            fault percentage (0, 99]
+      -type int
+            (required)type value, type list:
+               0   OpenFileEIO
+               1   OpenFileEPERM
+               2   ReadFileDelay
+               3   ReadFileErr
+               4   WriteFileENOSPC
+               5   WriteFileDelay
+               6   MkDirEACCES
+               7   MkDirEPERM
+               8   RmDirEACCESS
+               9   RmDirEPERM
+               10  FsycnDelay
+               11  FsycnEIO
+               12  OpenDirEACCESS
+               13  OpenDirEPERM    
+
+* 示例
+
+```
+./faultfs -mountpoint /root/testfs/test-dir-1 -original /root/testfs/test-dir-2 -type 13 -percent 90 -delay=2s
+```
+
 ## Possible Recipes
 
 * Fault Injection (Example: [Namazu](https://github.com/osrg/namazu))
@@ -43,7 +81,7 @@ if err != nil { .. }
 err = fs.Serve()
 ```
 
-See [`hook.go`](hookfs/hook.go) for further information. [GoDoc](https://godoc.org/github.com/osrg/hookfs) is also your friend.
+See [`hook.go`](src/hookfs/hook.go) for further information. [GoDoc](https://godoc.org/github.com/osrg/hookfs) is also your friend.
 
 ## Related Projects
 * [Namazu (Earthquake)](https://github.com/osrg/namazu)

@@ -1,10 +1,10 @@
 package main
 
 import (
+	"hookfs"
 	"syscall"
 	"time"
 
-	hookfs "github.com/osrg/hookfs/hookfs"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -14,7 +14,13 @@ type MyHookContext struct {
 }
 
 // MyHook implements hookfs.Hook
-type MyHook struct{}
+//type MyHook struct{}
+
+type MyHook struct {
+	faultType int
+	percent int
+	delay time.Duration
+}
 
 // Init implements hookfs.HookWithInit
 func (h *MyHook) Init() error {
@@ -27,7 +33,11 @@ func (h *MyHook) Init() error {
 // PreOpen implements hookfs.HookOnOpen
 func (h *MyHook) PreOpen(path string, flags uint32) (bool, hookfs.HookContext, error) {
 	ctx := MyHookContext{path: path}
-	if probab(5) {
+	percentage := 0
+	if h.faultType == OpenFileEIO {
+		percentage = h.percent
+	}
+	if probab(percentage) {
 		log.WithFields(log.Fields{
 			"h":   h,
 			"ctx": ctx,
@@ -39,7 +49,11 @@ func (h *MyHook) PreOpen(path string, flags uint32) (bool, hookfs.HookContext, e
 
 // PostOpen implements hookfs.HookOnOpen
 func (h *MyHook) PostOpen(realRetCode int32, ctx hookfs.HookContext) (bool, error) {
-	if probab(5) {
+	percentage := 0
+	if h.faultType == OpenFileEPERM {
+		percentage = h.percent
+	}
+	if probab(percentage) {
 		log.WithFields(log.Fields{
 			"h":   h,
 			"ctx": ctx,
@@ -52,22 +66,29 @@ func (h *MyHook) PostOpen(realRetCode int32, ctx hookfs.HookContext) (bool, erro
 // PreRead implements hookfs.HookOnRead
 func (h *MyHook) PreRead(path string, length int64, offset int64) ([]byte, bool, hookfs.HookContext, error) {
 	ctx := MyHookContext{path: path}
-	if probab(3) {
-		sleep := 3 * time.Second
+	percentage := 0
+	if h.faultType == ReadFileDelay {
+		percentage = h.percent
+	}
+	if probab(percentage) {
 		log.WithFields(log.Fields{
 			"h":     h,
 			"ctx":   ctx,
-			"sleep": sleep,
+			"sleep": h.delay,
 		}).Info("MyPreRead: sleeping")
-		time.Sleep(sleep)
+		time.Sleep(h.delay)
 	}
 	return nil, false, ctx, nil
 }
 
 // PostRead implements hookfs.HookOnRead
 func (h *MyHook) PostRead(realRetCode int32, realBuf []byte, ctx hookfs.HookContext) ([]byte, bool, error) {
-	if probab(70) {
-		buf := []byte("Hello HookFS hooked Data!\n")
+	percentage := 0
+	if h.faultType == ReadFileErr {
+		percentage = h.percent
+	}
+	if probab(percentage) {
+		buf := []byte("Hello FaultFS hooked error Data!\n")
 		log.WithFields(log.Fields{
 			"h":   h,
 			"ctx": ctx,
@@ -81,21 +102,28 @@ func (h *MyHook) PostRead(realRetCode int32, realBuf []byte, ctx hookfs.HookCont
 // PreWrite implements hookfs.HookOnWrite
 func (h *MyHook) PreWrite(path string, buf []byte, offset int64) (bool, hookfs.HookContext, error) {
 	ctx := MyHookContext{path: path}
-	if probab(3) {
-		sleep := 3 * time.Second
+	percentage := 0
+	if h.faultType == WriteFileDelay {
+		percentage = h.percent
+	}
+	if probab(percentage) {
 		log.WithFields(log.Fields{
 			"h":     h,
 			"ctx":   ctx,
-			"sleep": sleep,
+			"sleep": h.delay,
 		}).Info("MyPreWrite: sleeping")
-		time.Sleep(sleep)
+		time.Sleep(h.delay)
 	}
 	return false, ctx, nil
 }
 
 // PostWrite implements hookfs.HookOnWrite
 func (h *MyHook) PostWrite(realRetCode int32, ctx hookfs.HookContext) (bool, error) {
-	if probab(70) {
+	percentage := 0
+	if h.faultType == WriteFileENOSPC {
+		percentage = h.percent
+	}
+	if probab(percentage) {
 		log.WithFields(log.Fields{
 			"h":   h,
 			"ctx": ctx,
@@ -108,7 +136,11 @@ func (h *MyHook) PostWrite(realRetCode int32, ctx hookfs.HookContext) (bool, err
 // PreMkdir implements hookfs.HookOnMkdir
 func (h *MyHook) PreMkdir(path string, mode uint32) (bool, hookfs.HookContext, error) {
 	ctx := MyHookContext{path: path}
-	if probab(95) {
+	percentage := 0
+	if h.faultType == MkDirEACCES {
+		percentage = h.percent
+	}
+	if probab(percentage) {
 		log.WithFields(log.Fields{
 			"h":   h,
 			"ctx": ctx,
@@ -120,7 +152,11 @@ func (h *MyHook) PreMkdir(path string, mode uint32) (bool, hookfs.HookContext, e
 
 // PostMkdir implements hookfs.HookOnMkdir
 func (h *MyHook) PostMkdir(realRetCode int32, ctx hookfs.HookContext) (bool, error) {
-	if probab(5) {
+	percentage := 0
+	if h.faultType == MkDirEPERM {
+		percentage = h.percent
+	}
+	if probab(percentage) {
 		log.WithFields(log.Fields{
 			"h":   h,
 			"ctx": ctx,
@@ -133,7 +169,11 @@ func (h *MyHook) PostMkdir(realRetCode int32, ctx hookfs.HookContext) (bool, err
 // PreRmdir implements hookfs.HookOnRmdir
 func (h *MyHook) PreRmdir(path string) (bool, hookfs.HookContext, error) {
 	ctx := MyHookContext{path: path}
-	if probab(30) {
+	percentage := 0
+	if h.faultType == RmDirEACCESS {
+		percentage = h.percent
+	}
+	if probab(percentage) {
 		log.WithFields(log.Fields{
 			"h":   h,
 			"ctx": ctx,
@@ -145,7 +185,11 @@ func (h *MyHook) PreRmdir(path string) (bool, hookfs.HookContext, error) {
 
 // PostRmdir implements hookfs.HookOnRmdir
 func (h *MyHook) PostRmdir(realRetCode int32, ctx hookfs.HookContext) (bool, error) {
-	if probab(30) {
+	percentage := 0
+	if h.faultType == RmDirEPERM {
+		percentage = h.percent
+	}
+	if probab(percentage) {
 		log.WithFields(log.Fields{
 			"h":   h,
 			"ctx": ctx,
@@ -158,7 +202,11 @@ func (h *MyHook) PostRmdir(realRetCode int32, ctx hookfs.HookContext) (bool, err
 // PreOpenDir implements hookfs.HookOnOpenDir
 func (h *MyHook) PreOpenDir(path string) (bool, hookfs.HookContext, error) {
 	ctx := MyHookContext{path: path}
-	if probab(30) && path != "" {
+	percentage := 0
+	if h.faultType == OpenDirEACCESS {
+		percentage = h.percent
+	}
+	if probab(percentage) && path != "" {
 		log.WithFields(log.Fields{
 			"h":   h,
 			"ctx": ctx,
@@ -170,7 +218,11 @@ func (h *MyHook) PreOpenDir(path string) (bool, hookfs.HookContext, error) {
 
 // PostOpenDir implements hookfs.HookOnOpenDir
 func (h *MyHook) PostOpenDir(realRetCode int32, ctx hookfs.HookContext) (bool, error) {
-	if probab(30) && ctx.(MyHookContext).path != "" {
+	percentage := 0
+	if h.faultType == OpenDirEPERM {
+		percentage = h.percent
+	}
+	if probab(percentage) && ctx.(MyHookContext).path != "" {
 		log.WithFields(log.Fields{
 			"h":   h,
 			"ctx": ctx,
@@ -183,21 +235,28 @@ func (h *MyHook) PostOpenDir(realRetCode int32, ctx hookfs.HookContext) (bool, e
 // PreFsync implements hookfs.HookOnFsync
 func (h *MyHook) PreFsync(path string, flags uint32) (bool, hookfs.HookContext, error) {
 	ctx := MyHookContext{path: path}
-	if probab(90) && path != "" {
-		sleep := 3 * time.Second
+	percentage := 0
+	if h.faultType == FsycnDelay {
+		percentage = h.percent
+	}
+	if probab(percentage) && path != "" {
 		log.WithFields(log.Fields{
 			"h":     h,
 			"ctx":   ctx,
-			"sleep": sleep,
+			"sleep": h.delay,
 		}).Info("MyPreFsync: sleeping")
-		time.Sleep(sleep)
+		time.Sleep(h.delay)
 	}
 	return false, ctx, nil
 }
 
 // PostFsync implements hookfs.HookOnFsync
 func (h *MyHook) PostFsync(realRetCode int32, ctx hookfs.HookContext) (bool, error) {
-	if probab(80) && ctx.(MyHookContext).path != "" {
+	percentage := 0
+	if h.faultType == FsycnEIO {
+		percentage = h.percent
+	}
+	if probab(percentage) && ctx.(MyHookContext).path != "" {
 		log.WithFields(log.Fields{
 			"h":   h,
 			"ctx": ctx,
